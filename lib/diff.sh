@@ -29,7 +29,7 @@ compare_previous_scan() {
 
     log "Comparing current scan with previous scan..."
 
-    python3 \
+    python3 - \
         "$previous_json" \
         "$JSON_FILE" \
         "$CHANGES_FILE" <<'PY'

@@ -1,429 +1,286 @@
 # Network Discovery & Infrastructure Inventory
 
-Cross-platform network discovery and infrastructure inventory tool designed for automated infrastructure visibility.
+A Bash-based network discovery and inventory tool for authorized networks. It discovers live TCP services, enriches them with Nmap service and version detection, collects TLS certificate details, and writes JSON, CSV, HTML, raw Masscan, and raw Nmap output.
 
-The project discovers hosts, open TCP ports, running services, software versions, operating systems and TLS certificates. Results are stored as structured inventory and can be compared against previous scans to identify infrastructure changes.
+The scanner is designed for repeatable operational use, including scheduled scans of medium-sized networks.
 
-The tool is designed as a foundation for further automation such as **certificate lifecycle management, ACME/Let's Encrypt integration, Ansible automation, monitoring and CI/CD pipelines**.
+> **Authorization required:** Only scan networks and systems that you own or are explicitly authorized to assess. Active scanning can create traffic, trigger security alerts, and affect fragile devices.
 
----
+## What It Does
 
-## Features
-
-* Cross-platform support
-* Automatic operating system detection
-* Automatic package-manager detection
-* Automatic dependency installation
-* Automatic local network detection
-* Live host discovery
-* Full TCP port scanning
-* Quick scanning mode
-* Service detection
-* Software version detection
-* OS fingerprinting
-* TLS certificate discovery
-* Certificate expiration detection
-* JSON inventory
-* CSV inventory
-* HTML report
-* Raw Nmap XML output
-* Raw Masscan output
-* Infrastructure change detection
-* Timestamped scan history
-* `latest` / `previous` scan references
-* Designed for unattended execution
-
----
-
-# Supported Platforms
-
-| Platform     | Package Manager | Status    |
-| ------------ | --------------- | --------- |
-| Debian       | apt             | Supported |
-| Ubuntu       | apt             | Supported |
-| Linux Mint   | apt             | Supported |
-| Fedora       | dnf             | Supported |
-| RHEL         | dnf/yum         | Supported |
-| Rocky Linux  | dnf             | Supported |
-| AlmaLinux    | dnf             | Supported |
-| Arch Linux   | pacman          | Supported |
-| Manjaro      | pacman          | Supported |
-| Alpine Linux | apk             | Supported |
-| macOS        | Homebrew        | Supported |
-
-Windows is currently not supported.
-
----
-
-# Architecture
+The scan pipeline is:
 
 ```text
-                           Network
-                              │
-                              ▼
-                   ┌────────────────────┐
-                   │  Network Discovery │
-                   │                    │
-                   │    discover.sh     │
-                   └─────────┬──────────┘
-                             │
-                    OS / Platform Detection
-                             │
-             ┌───────────────┼───────────────┐
-             │               │               │
-             ▼               ▼               ▼
-          Linux           macOS         Package Manager
-             │               │               │
-             └───────────────┴───────────────┘
-                             │
-                             ▼
-                       Dependency Check
-                             │
-                             ▼
-                       Network Detection
-                             │
-                             ▼
-                        Nmap Discovery
-                             │
-                             ▼
-                       Live Host List
-                             │
-                             ▼
-                     Port / Service Scan
-                             │
-                  ┌──────────┴──────────┐
-                  │                     │
-                  ▼                     ▼
-             OS Detection          TLS Detection
-                  │                     │
-                  └──────────┬──────────┘
-                             ▼
-                       Inventory JSON
-                             │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-             CSV            HTML          JSON
-              │
-              ▼
-       Previous Inventory
-              │
-              ▼
-        Change Detection
+Local network or explicit CIDR
+        |
+        v
+Masscan: fast TCP port discovery
+        |
+        v
+Nmap: targeted service/version/TLS enrichment
+        |
+        v
+Python: inventory and report generation
+        |
+        v
+JSON, CSV, HTML, certificates, raw scan data, change report
 ```
 
----
+The tool provides:
 
-# Requirements
+- Automatic local network detection.
+- Explicit CIDR scanning for routed or lab networks.
+- Fast TCP discovery with Masscan.
+- Targeted Nmap service and version detection.
+- Optional full-mode OS fingerprinting.
+- TLS certificate collection and expiry classification.
+- JSON inventory for automation.
+- CSV inventory for spreadsheets and imports.
+- HTML report for human review.
+- Raw Masscan list output and Nmap XML/text output.
+- Timestamped scan history.
+- `latest` and `previous` scan links.
+- Infrastructure change detection for hosts and ports.
+- Run locking to prevent concurrent scans.
+- Stale-lock recovery after interrupted processes.
+- Bounded Masscan retry behavior and Nmap host timeouts.
 
-The script requires:
+## Requirements
 
-* Bash
-* Masscan
-* Nmap
-* Python 3
-* OpenSSL
+Supported operating systems:
 
-The script automatically installs missing dependencies where supported.
+- Debian, Ubuntu, Linux Mint, Pop!_OS.
+- Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux.
+- Arch Linux, Manjaro, EndeavourOS.
+- Alpine Linux.
+- macOS.
 
-### Linux
+Windows is not currently supported.
 
-Supported package managers:
+Required commands:
 
-```text
-apt
-dnf
-yum
-pacman
-apk
-```
+- Bash.
+- Masscan.
+- Nmap.
+- Python 3.
+- OpenSSL.
 
-### macOS
+Package managers supported by automatic installation:
 
-Homebrew is supported.
+| Platform | Package manager |
+| --- | --- |
+| Debian-based Linux | `apt` |
+| Fedora/RHEL-based Linux | `dnf` or `yum` |
+| Arch-based Linux | `pacman` |
+| Alpine Linux | `apk` |
+| macOS | Homebrew |
 
-The script intentionally does **not** install Homebrew automatically because doing so modifies the system beyond the scope of the discovery tool.
+Homebrew itself is not installed automatically. Install it first from [brew.sh](https://brew.sh/).
 
-Install Homebrew separately if required.
+## Installation
 
----
-
-# Installation
-
-Clone the repository:
+Clone the repository and enter it:
 
 ```bash
-git clone https://github.com/<user>/<repository>.git
-cd <repository>
-```
-
-Make the main script executable:
-
-```bash
+git clone <repository-url>
+cd AiO-Network-Inventory
 chmod +x discover.sh
 ```
 
-Run the discovery:
+Verify the CLI:
 
 ```bash
-sudo ./discover.sh
+./discover.sh --version
+./discover.sh --help
 ```
 
-The script automatically detects the operating system and installs required packages when possible.
+The script can install missing supported dependencies automatically. For controlled production systems, install dependencies through your normal system-management process and use `--no-install`.
 
----
-
-# Basic Usage
-
-## Automatic network detection
+### macOS
 
 ```bash
-sudo ./discover.sh
+brew install masscan nmap python openssl
 ```
 
-The tool determines the network associated with the default route.
+### Debian or Ubuntu
 
-Example:
+```bash
+sudo apt-get update
+sudo apt-get install -y masscan nmap python3 openssl
+```
+
+### Fedora, RHEL, Rocky, or AlmaLinux
+
+```bash
+sudo dnf install -y masscan nmap python3 openssl
+```
+
+Package availability varies by distribution. If Masscan is not available in the configured repository, install it according to your organization’s approved package process, then rerun with `--no-install`.
+
+## Permissions and Sudo
+
+Run the scanner as root because Masscan requires raw packet privileges and Nmap OS detection also needs elevated privileges in full mode:
+
+```bash
+sudo ./discover.sh --quick --no-install
+```
+
+When the command is started with `sudo`, the script runs as root and does not need a second sudo prompt.
+
+For unattended jobs, use one of these approaches:
+
+1. Run the cron or systemd job as root.
+2. Configure narrowly scoped passwordless sudo for the scanner and its dependencies.
+3. Run the scanner from a controlled service account with the required packet privileges.
+
+Do not put a password in a script, cron entry, environment variable, or Git repository.
+
+## Basic Usage
+
+### Scan the automatically detected local network
+
+```bash
+sudo ./discover.sh --quick --no-install
+```
+
+The script determines the interface and network associated with the default route. Example:
 
 ```text
-[+] OS              : debian
-[+] Package manager : apt
-[+] Interface       : ens18
-[+] Local IP        : 10.20.0.15
-[+] Network         : 10.20.0.0/24
+Interface : en0
+Local IP  : 192.168.1.39
+Network   : 192.168.1.0/24
 ```
 
----
-
-# Explicit Network
-
-A network can be supplied manually:
+### Scan an explicit network
 
 ```bash
-sudo ./discover.sh --network 10.20.0.0/24
+sudo ./discover.sh \
+  --network 192.168.1.0/24 \
+  --quick \
+  --no-install
 ```
 
-This is useful when:
+Use `--network` when scanning a different VLAN, a routed subnet, a lab range, or a network that is not associated with the default route.
 
-* scanning a different VLAN
-* scanning through a routed interface
-* running from a jump host
-* testing the tool in a lab environment
-
----
-
-# Quick Scan
-
-The default mode scans all TCP ports.
-
-For faster discovery, use:
+### Choose an output directory
 
 ```bash
-sudo ./discover.sh --quick
+sudo ./discover.sh \
+  --quick \
+  --no-install \
+  --output /var/lib/network-discovery
 ```
 
-Quick mode uses Masscan to sweep all TCP ports by default, then asks Nmap to
-enrich only the ports found open. It skips OS fingerprinting and uses faster
-host grouping for fleet scans. Use full mode when OS fingerprinting is
-required. Set `MASSCAN_PORTS` to override the range.
-
-For unattended production runs, Nmap uses a default ten-minute host timeout and
-two retries. These can be adjusted with environment variables:
-
-```bash
-NMAP_HOST_TIMEOUT=15m NMAP_MAX_RETRIES=3 ./discover.sh --quick
-```
-
-Runs are serialized per output directory. A second run exits instead of
-mixing its results with an active scan.
+The output directory must be writable by the account running the scanner. When using `sudo`, a system path such as `/var/lib/network-discovery` is appropriate.
 
 ### Full mode
 
-```text
-1-65535 TCP
-```
-
-### Quick mode
-
-Masscan-discovered open TCP ports, with Nmap service/version/TLS enrichment.
-
-Full mode provides better visibility but can take significantly longer.
-
----
-
-# Disable Automatic Installation
-
-To prevent the script from modifying the system:
+Full mode enables Nmap OS fingerprinting after Masscan discovers open ports:
 
 ```bash
 sudo ./discover.sh --no-install
 ```
 
-If required dependencies are missing, the script exits with an error describing what must be installed.
+Full mode does not blindly scan every TCP port with Nmap. Masscan first discovers open ports, and Nmap enriches only those ports. Full mode is still more expensive because OS detection is enabled.
 
-This mode is useful for:
+### Quick mode
 
-* CI/CD
-* immutable infrastructure
-* controlled production environments
-* containers
-* systems where package installation is managed externally
-
----
-
-# Network Discovery
-
-The first stage performs fast host and TCP port discovery with Masscan:
+Quick mode is intended for regular fleet scans:
 
 ```bash
-masscan <network> -p 1-65535 --rate 10000 -oL masscan.txt
+sudo ./discover.sh --quick --no-install
 ```
+
+Quick mode:
+
+- Uses Masscan for TCP discovery.
+- Scans all TCP ports by default.
+- Uses targeted Nmap service/version/TLS enrichment.
+- Skips OS fingerprinting.
+- Uses faster Nmap host grouping.
+
+High dynamic ports are included because the default Masscan range is `1-65535`.
+
+## Command-Line Options
+
+| Option | Description |
+| --- | --- |
+| `--network CIDR` | Scan an explicit IPv4 or IPv6 network. |
+| `--output DIR` | Store results under `DIR`. Default: `./network-discovery`. |
+| `--quick` | Skip OS fingerprinting and use the fleet-oriented enrichment profile. |
+| `--no-install` | Never install packages automatically. Recommended for production. |
+| `--version` | Print the scanner version. |
+| `--help` | Print command-line help. |
 
 Example:
 
-```text
-10.20.0.1
-10.20.0.5
-10.20.0.12
-10.20.0.20
+```bash
+sudo ./discover.sh \
+  --network 10.20.0.0/16 \
+  --quick \
+  --no-install \
+  --output /var/lib/network-discovery
 ```
 
-Hosts with open TCP ports are stored in:
+## Environment Configuration
 
-```text
-hosts.txt
+The command-line interface is intentionally small. Scan tuning is configured through environment variables.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MASSCAN_PORTS` | `1-65535` | TCP port range passed to Masscan. |
+| `MASSCAN_RATE` | `20000` | Masscan packets per second. |
+| `MASSCAN_RETRY_RATE` | `5000` | Rate used for the automatic empty-result retry. |
+| `MASSCAN_RETRIES` | `1` | Number of retries when no open TCP record is reported. |
+| `NMAP_HOST_TIMEOUT` | `10m` | Maximum Nmap time per host. |
+| `NMAP_MAX_RETRIES` | `2` | Nmap packet retry limit. |
+
+### Rate guidance
+
+Masscan uses an asynchronous high-concurrency engine; shell-level threading is not required. Start conservatively and increase the rate only after observing packet loss, device impact, and network monitoring:
+
+```bash
+sudo env MASSCAN_RATE=10000 ./discover.sh --quick --no-install
 ```
 
----
+The default `20000` packets per second is intended as a moderate starting point for a normal wired LAN. Use a lower value for Wi-Fi, VPN, routed networks, fragile devices, or networks with strict IDS thresholds:
 
-# Service Discovery
-
-Each discovered host is scanned for TCP services.
-
-The full scan performs:
-
-```text
-TCP port discovery
-        +
-service detection
-        +
-version detection
-        +
-OS detection
-        +
-TLS certificate detection
+```bash
+sudo env MASSCAN_RATE=5000 \
+  MASSCAN_RETRY_RATE=2000 \
+  ./discover.sh --quick --no-install
 ```
 
-Example result:
+Use a higher rate only with explicit authorization and measured capacity:
 
-```text
-10.20.0.12
-
-22/tcp    ssh       OpenSSH
-80/tcp    http      nginx
-443/tcp   https     nginx
-5432/tcp  postgres  PostgreSQL
+```bash
+sudo env MASSCAN_RATE=50000 ./discover.sh --quick --no-install
 ```
 
----
+### Limit the port range
 
-# TLS Certificate Discovery
+A narrower range can reduce traffic substantially, but it will not discover services outside that range:
 
-TLS-enabled services are inspected using both Nmap and Python's TLS support.
-
-The tool attempts to identify:
-
-* certificate subject
-* certificate issuer
-* serial number
-* validity period
-* expiration date
-* SAN entries
-* days remaining
-* certificate status
-
-Certificate status is classified as:
-
-```text
-OK
-WARNING
-CRITICAL
-EXPIRED
-UNKNOWN
+```bash
+sudo env MASSCAN_PORTS=22,53,80,443,8080,8443 \
+  ./discover.sh --quick --no-install
 ```
 
-The default thresholds are:
+### Disable the empty-result retry
 
-| Status   | Condition                          |
-| -------- | ---------------------------------- |
-| OK       | > 30 days                          |
-| WARNING  | 8–30 days                          |
-| CRITICAL | 0–7 days                           |
-| EXPIRED  | < 0 days                           |
-| UNKNOWN  | Expiration could not be determined |
-
----
-
-# Inventory
-
-The primary machine-readable inventory is:
-
-```text
-inventory.json
+```bash
+sudo env MASSCAN_RETRIES=0 ./discover.sh --quick --no-install
 ```
 
-Example:
+The retry exists to handle transient packet loss or a dropped first sweep. It does not guarantee discovery of every filtered or unstable endpoint.
 
-```json
-{
-  "generated_at": "2026-09-22T11:30:00+00:00",
-  "host_count": 1,
-  "hosts": [
-    {
-      "ip": "10.20.0.12",
-      "hostname": "gitlab",
-      "mac": "AA:BB:CC:DD:EE:FF",
-      "os": "Linux",
-      "ports": [
-        {
-          "port": 22,
-          "protocol": "tcp",
-          "service": "ssh",
-          "product": "OpenSSH",
-          "version": "9.2"
-        },
-        {
-          "port": 443,
-          "protocol": "tcp",
-          "service": "https",
-          "product": "nginx",
-          "version": "1.24.0"
-        }
-      ]
-    }
-  ]
-}
-```
+## Output Layout
 
-This JSON can later be consumed by:
-
-* Ansible
-* Python
-* GitLab CI/CD
-* monitoring
-* CMDB systems
-* custom dashboards
-* certificate automation
-
----
-
-# Output Structure
-
-Every scan creates a timestamped directory:
+Each completed run is stored in its own timestamped directory:
 
 ```text
 network-discovery/
-│
-├── 20260922_113000/
+├── 20260922_142300_38952/
 │   ├── hosts.txt
 │   ├── masscan.txt
 │   ├── nmap.xml
@@ -434,466 +291,349 @@ network-discovery/
 │   ├── certificates.txt
 │   ├── changes.txt
 │   └── metadata.json
-│
-└── latest -> 20260922_113000
+├── latest -> 20260922_142300_38952
+└── previous -> <previous-run>
 ```
 
-The `latest` symlink always points to the most recent scan.
+Generated scan data is ignored by Git. Do not commit local inventories, MAC addresses, hostnames, certificate details, or raw scan logs unless that is intentional and approved.
 
-After at least two scans:
+### Output files
 
-```text
-previous -> <previous scan>
-```
+| File | Purpose |
+| --- | --- |
+| `hosts.txt` | Hosts with at least one Masscan-confirmed open TCP port. |
+| `masscan.txt` | Raw Masscan list output. |
+| `nmap.xml` | Raw structured Nmap output. |
+| `nmap.txt` | Human-readable Nmap output. |
+| `inventory.json` | Primary machine-readable inventory. |
+| `inventory.csv` | Flat host/port export. |
+| `inventory.html` | Browser-readable report. |
+| `certificates.txt` | TLS certificate status summary. |
+| `changes.txt` | Difference from the previous completed inventory. |
+| `metadata.json` | Run configuration and summary metadata. |
 
-is also available.
-
----
-
-# HTML Report
-
-The HTML report can be opened in any browser:
+Open the latest HTML report on macOS:
 
 ```bash
-open network-discovery/latest/inventory.html
+open /var/lib/network-discovery/latest/inventory.html
 ```
 
 On Linux:
 
 ```bash
-xdg-open network-discovery/latest/inventory.html
+xdg-open /var/lib/network-discovery/latest/inventory.html
 ```
 
-The report provides an overview of:
+## Inventory Data
 
-* hosts
-* IP addresses
-* hostnames
-* operating systems
-* ports
-* services
-* versions
-* TLS certificates
+A normal `inventory.json` contains hosts and their open ports:
 
----
+```json
+{
+  "generated_at": "2026-09-22T14:23:36+00:00",
+  "host_count": 1,
+  "hosts": [
+    {
+      "ip": "192.168.1.180",
+      "hostname": "pi.hole",
+      "mac": "B8:27:EB:2A:63:CF",
+      "os": "",
+      "ports": [
+        {
+          "port": 443,
+          "protocol": "tcp",
+          "service": "ssl/webdav",
+          "product": "",
+          "version": "",
+          "extrainfo": "",
+          "certificate": {},
+          "certificate_live": {}
+        }
+      ]
+    }
+  ]
+}
+```
 
-# Change Detection
+In quick mode, `os` is normally empty because OS fingerprinting is disabled. In full mode, Nmap may populate it when the target responds sufficiently for fingerprinting.
 
-The tool automatically compares the current scan with the previous scan.
+A Masscan-confirmed port is retained even if the target becomes unavailable before Nmap enrichment. In that case, the port remains in the inventory with empty service/version fields. This distinguishes “port discovered, enrichment unavailable” from “port not discovered.”
+
+## TLS Certificates
+
+TLS inspection is attempted for:
+
+- Ports commonly associated with TLS: `443`, `465`, `636`, `853`, `993`, `995`, `8443`, and `9443`.
+- Services identified by Nmap as SSL or HTTPS.
+- Ports where Nmap reported certificate data.
+
+The collector records:
+
+- Subject.
+- Issuer.
+- Serial number.
+- Not-before and not-after timestamps.
+- DNS SAN entries.
+- Days remaining.
+- Collection errors, when applicable.
+
+Certificate status is classified as:
+
+| Status | Condition |
+| --- | --- |
+| `OK` | More than 30 days remaining. |
+| `WARNING` | 8-30 days remaining. |
+| `CRITICAL` | 0-7 days remaining. |
+| `EXPIRED` | Expiration is in the past. |
+| `UNKNOWN` | The certificate could not be read or dated. |
+
+Certificate collection does not validate trust chains. It is intended to inventory what a service presents, including self-signed and privately issued certificates.
+
+## Change Detection
+
+After the first completed run, the scanner compares the current inventory with the previous one. It reports:
+
+- New hosts.
+- Removed hosts.
+- New TCP ports.
+- Removed TCP ports.
 
 Example:
 
 ```text
-[NEW HOST] 10.20.0.31 docker01
-[NEW PORT] 10.20.0.12 8080/tcp
-[REMOVED PORT] 10.20.0.20 9200/tcp
+[NEW HOST] 192.168.1.25 workstation
+[NEW PORT] 192.168.1.180 8443/tcp
+[REMOVED PORT] 192.168.1.1 1900/tcp
 ```
 
-This makes it possible to detect infrastructure changes without manually comparing inventories.
+The comparison currently focuses on host identity and open port/protocol changes. It does not report every service-version or certificate-field change.
 
-Potential future integrations include:
+`latest` points to the most recently finalized run. `previous` points to the run that was latest immediately before it.
 
-```text
-New Host
-   │
-   ▼
-GitLab CI
-   │
-   ▼
-Alert
+## Automation
+
+### Cron
+
+Use an absolute repository path and an absolute output path. Run as root to avoid interactive sudo prompts:
+
+```cron
+0 3 * * * /opt/network-inventory/discover.sh --quick --no-install --output /var/lib/network-discovery >> /var/log/network-inventory.log 2>&1
 ```
 
-or:
+Make sure the cron environment includes `masscan`, `nmap`, `python3`, and `openssl` in `PATH`. A robust cron entry can define it explicitly:
 
-```text
-New Port
-   │
-   ▼
-Security Review
+```cron
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/homebrew/bin
+0 3 * * * /opt/network-inventory/discover.sh --quick --no-install --output /var/lib/network-discovery >> /var/log/network-inventory.log 2>&1
 ```
 
----
+### systemd timer
 
-# Scanning Architecture
+Example service:
 
-Masscan performs the fast TCP port sweep. Nmap then enriches only the ports
-Masscan found open, which preserves service, version, OS, and TLS inspection
-without probing every closed or filtered port a second time.
+```ini
+[Unit]
+Description=Network inventory scan
 
-The required information includes:
-
-```text
-Host discovery
-Port discovery
-Service detection
-Version detection
-OS fingerprinting
-TLS inspection
+[Service]
+Type=oneshot
+ExecStart=/opt/network-inventory/discover.sh --quick --no-install --output /var/lib/network-discovery
 ```
 
-Nmap produces structured XML output that can be processed by the inventory
-layer, while Masscan provides the speed needed for larger environments:
+Example timer:
 
-```text
-                Nmap
+```ini
+[Unit]
+Description=Daily network inventory scan
 
-                 │
-       ┌─────────┼─────────┐
-       ▼         ▼         ▼
-     Ports    Services     OS
-                 │
-                 ▼
-             Versions
-                 │
-                 ▼
-               TLS
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
 ```
 
-```text
-                    Network
-                       │
-                       ▼
-                   Masscan
-                       │
-                Open ports
-                       │
-                       ▼
-                    Nmap
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-       Services       OS           TLS
-          │            │            │
-          └────────────┼────────────┘
-                       ▼
-                   Inventory
-```
+Run the service as root or grant the service only the privileges required by Masscan and Nmap.
 
-Masscan uses an asynchronous high-concurrency engine and defaults to `20000`
-packets per second. Reduce the rate for congested or sensitive networks:
+### CI/CD and monitoring
+
+For automation, consume:
+
+- `latest/inventory.json` for structured inventory.
+- `latest/changes.txt` for port and host changes.
+- `latest/certificates.txt` for certificate checks.
+- `latest/metadata.json` for run status and summary values.
+
+Treat a nonzero exit code as a failed scan. Do not treat an empty inventory as proof that the network is empty without checking `masscan.txt`, `nmap.txt`, and the command log.
+
+## Reliability and Safety Behavior
+
+- Only one scan can use a given output directory at a time.
+- A stale lock from a dead process is removed automatically.
+- A live concurrent scan causes the second scan to exit.
+- Masscan retries once when no open TCP record is reported, unless `MASSCAN_RETRIES=0`.
+- Nmap uses a per-host timeout and retry limit.
+- Inventory and report files are written atomically where applicable.
+- A target that disappears between Masscan and Nmap is retained from Masscan output.
+- The scanner does not install Homebrew automatically.
+- The scanner does not silently continue when required dependencies are missing with `--no-install`.
+
+## Troubleshooting
+
+### `masscan: command not found`
+
+Install Masscan and verify it is in the execution `PATH`:
 
 ```bash
-MASSCAN_RATE=1000 ./discover.sh --quick --no-install
+command -v masscan
+masscan --version
 ```
 
-If a sweep reports no open ports, the tool retries once at `5000` packets per
-second by default. Configure this with `MASSCAN_RETRY_RATE` or disable retries
-with `MASSCAN_RETRIES=0`.
+### `Masscan requires root privileges or passwordless sudo`
 
----
+Run the scanner with `sudo` or configure the service account according to your security policy:
 
-# Project Structure
+```bash
+sudo ./discover.sh --quick --no-install
+```
+
+### Masscan reports no open ports
+
+Check:
+
+1. You are scanning the intended CIDR.
+2. The interface has a route to that network.
+3. The scan is authorized and not blocked by a firewall or IDS.
+4. The target devices are online.
+5. `masscan.txt` contains an `open tcp` record.
+6. The configured rate is appropriate for the network.
+
+Try a lower-rate retry manually through the environment:
+
+```bash
+sudo env MASSCAN_RATE=5000 MASSCAN_RETRY_RATE=2000 \
+  ./discover.sh --quick --no-install
+```
+
+### Nmap reports zero hosts after Masscan finds ports
+
+This can happen when a service closes or filters the port between the two phases. The tool preserves the Masscan-confirmed port in `inventory.json` with empty enrichment fields. Check:
+
+```bash
+cat network-discovery/latest/masscan.txt
+cat network-discovery/latest/nmap.txt
+jq . network-discovery/latest/inventory.json
+```
+
+The Nmap command uses `-Pn` because Masscan has already established reachability at the discovery stage.
+
+### The scan is too slow
+
+Try:
+
+```bash
+sudo env MASSCAN_RATE=10000 NMAP_HOST_TIMEOUT=5m \
+  ./discover.sh --quick --no-install
+```
+
+For a controlled service inventory, limit the port range:
+
+```bash
+sudo env MASSCAN_PORTS=22,53,80,443,8080,8443 \
+  ./discover.sh --quick --no-install
+```
+
+Do not increase the rate blindly. Packet loss can reduce accuracy and increase retries.
+
+### A second scan says the output directory is locked
+
+Check for an active process:
+
+```bash
+ps aux | grep -E '[m]asscan|[n]map|[d]iscover.sh'
+```
+
+If no scan is running, the next invocation should recover a stale lock automatically. Do not delete a lock while a real scan is active.
+
+### Permission denied under `/var/lib/network-discovery`
+
+Create the output directory with appropriate ownership before running as a service:
+
+```bash
+sudo mkdir -p /var/lib/network-discovery
+sudo chown root:wheel /var/lib/network-discovery
+```
+
+Use the correct group for your Linux distribution.
+
+### OS detection is empty
+
+Expected in `--quick` mode. Use full mode:
+
+```bash
+sudo ./discover.sh --no-install
+```
+
+Even in full mode, OS fingerprinting is probabilistic and can fail against filtered, embedded, or unusual devices.
+
+## Development and Validation
+
+Run the local static checks:
+
+```bash
+bash -n discover.sh lib/*.sh
+python3 - <<'PY'
+import ast
+from pathlib import Path
+
+for path in sorted(Path("lib").glob("*.sh")):
+    for block in path.read_text().split("<<'PY'")[1:]:
+        ast.parse(block.split("\nPY", 1)[0])
+
+print("embedded Python: OK")
+PY
+```
+
+Do not run an active network scan in automated tests without an explicit test network. Test parsing and report generation with captured or mocked Masscan/Nmap output instead.
+
+## Project Structure
 
 ```text
 .
 ├── discover.sh
-│
 ├── lib/
+│   ├── certificates.sh
 │   ├── common.sh
+│   ├── diff.sh
+│   ├── inventory.sh
+│   ├── network.sh
 │   ├── os.sh
 │   ├── packages.sh
-│   ├── network.sh
-│   ├── scanner.sh
-│   ├── certificates.sh
-│   ├── inventory.sh
-│   └── diff.sh
-│
-├── README.md
+│   └── scanner.sh
+├── .gitignore
 ├── LICENSE
-└── .gitignore
+└── README.md
 ```
 
-### Module responsibilities
-
-| Module            | Responsibility                         |
-| ----------------- | -------------------------------------- |
-| `discover.sh`     | Main orchestration                     |
-| `common.sh`       | Logging, directories, common functions |
-| `os.sh`           | OS and package-manager detection       |
-| `packages.sh`     | Dependency installation                |
-| `network.sh`      | Network/interface detection            |
-| `scanner.sh`      | Masscan discovery and Nmap enrichment  |
-| `certificates.sh` | TLS inspection                         |
-| `inventory.sh`    | JSON/CSV/HTML generation               |
-| `diff.sh`         | Previous/current comparison            |
-
-This separation keeps platform-specific functionality isolated and makes the project easier to extend.
-
----
-
-# Automation
-
-The tool is designed to run unattended.
-
-For example, a daily scan could be scheduled using cron:
-
-```cron
-0 3 * * * /opt/network-discovery/discover.sh
-```
-
-Or through a systemd timer.
-
-It can also be executed from:
-
-* GitLab CI/CD
-* Jenkins
-* Ansible
-* scheduled jobs
-* monitoring systems
-
----
-
-# CI/CD Integration
-
-A future GitLab pipeline can look like:
-
-```text
-                 GitLab Schedule
-                        │
-                        ▼
-                Network Discovery
-                        │
-              ┌─────────┼─────────┐
-              ▼         ▼         ▼
-           JSON        CSV       HTML
-              │         │         │
-              └─────────┼─────────┘
-                        ▼
-                 GitLab Artifacts
-                        │
-                        ▼
-                 Change Detection
-                        │
-              ┌─────────┴─────────┐
-              ▼                   ▼
-          No changes          Changes found
-                                  │
-                                  ▼
-                                Alert
-```
-
----
-
-# Future Roadmap
-
-## Certificate Lifecycle Management
-
-Integrate ACME certificate automation using [`go-acme/lego`](https://github.com/go-acme/lego).
-
-Planned workflow:
-
-```text
-Network Discovery
-       │
-       ▼
-HTTPS Services
-       │
-       ▼
-Certificate Inventory
-       │
-       ▼
-Expiration Check
-       │
-       ├── OK
-       │
-       └── Expiring
-              │
-              ▼
-             lego
-              │
-              ▼
-        ACME Provider
-              │
-              ▼
-        New Certificate
-```
-
----
-
-## Ansible Integration
-
-The generated inventory can become an input to Ansible:
-
-```text
-Nmap
- │
- ▼
-inventory.json
- │
- ▼
-Ansible
- │
- ├── configure host
- ├── install packages
- ├── deploy configuration
- └── deploy certificate
-```
-
----
-
-## Monitoring
-
-Potential monitoring integrations:
-
-* Prometheus
-* Grafana
-* Uptime Kuma
-* Alertmanager
-* email
-* Slack
-* Microsoft Teams
-
-Example:
-
-```text
-Certificate
-    │
-    ▼
-30 days
-    │
-    ▼
-WARNING
-    │
-    ▼
-Monitoring
-    │
-    ▼
-Alert
-```
-
----
-
-## Asset Management
-
-The inventory can eventually serve as a lightweight asset discovery layer:
-
-```text
-Host
- ├── IP
- ├── Hostname
- ├── MAC
- ├── OS
- ├── Services
- ├── Versions
- └── Certificates
-```
-
-This can later be integrated with a CMDB or internal infrastructure database.
-
----
-
-# Security Considerations
-
-This tool performs active network scanning.
-
-Only scan networks and systems where you have explicit authorization to perform network discovery.
-
-Scanning can:
-
-* generate significant network traffic
-* trigger IDS/IPS alerts
-* trigger security monitoring
-* interact with exposed services
-* consume system resources
-
-The default Nmap timing is deliberately conservative:
-
-```text
--T3
-```
-
-For production environments, scan frequency, scope and timing should be agreed with the relevant infrastructure and security teams.
-
----
-
-# Design Principles
-
-The project follows several principles:
-
-### Automation first
-
-The tool should require as little manual configuration as possible.
-
-### Cross-platform
-
-Platform-specific behavior should be isolated instead of assuming Linux commands are available everywhere.
-
-### Machine-readable output
-
-JSON is treated as the primary automation format.
-
-### Human-readable output
-
-HTML and CSV make the inventory accessible to administrators.
-
-### Reproducibility
-
-Each scan is timestamped and preserved.
-
-### Change visibility
-
-Infrastructure changes should be detectable automatically.
-
-### Extensibility
-
-The discovery layer should be usable as a foundation for future automation.
-
----
-
-# Example End-to-End Architecture
-
-The long-term goal is an automated infrastructure lifecycle:
-
-```text
-                         GitLab
-                           │
-                    Scheduled Pipeline
-                           │
-                           ▼
-                 ┌──────────────────┐
-                 │ Network Discovery│
-                 │                  │
-                 │      Nmap        │
-                 └────────┬─────────┘
-                          │
-                          ▼
-                   Asset Inventory
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-        Hosts          Services       Certificates
-          │               │               │
-          └───────────────┼───────────────┘
-                          ▼
-                   Change Detection
-                          │
-             ┌────────────┴────────────┐
-             ▼                         ▼
-        Infrastructure             Certificate
-           changes                  lifecycle
-             │                         │
-             ▼                         ▼
-           Alert                     lego
-                                       │
-                                       ▼
-                                     ACME
-                                       │
-                                       ▼
-                                 New Certificate
-                                       │
-                                       ▼
-                                   Deployment
-                                       │
-                                       ▼
-                                    Service
-```
-
-The project therefore provides the **discovery and inventory layer** for a larger infrastructure automation platform.
-
----
-
-# License
-
-```text
-Apache License 2.0
-```
+| File | Responsibility |
+| --- | --- |
+| `discover.sh` | CLI, orchestration, and scan lifecycle. |
+| `lib/common.sh` | Logging, directories, locking, validation, and metadata. |
+| `lib/os.sh` | OS, package-manager, and privilege detection. |
+| `lib/packages.sh` | Dependency checks and supported installation. |
+| `lib/network.sh` | Local interface, route, address, and CIDR detection. |
+| `lib/scanner.sh` | Masscan discovery and targeted Nmap enrichment. |
+| `lib/certificates.sh` | TLS certificate collection and summary generation. |
+| `lib/inventory.sh` | Nmap XML parsing and JSON/CSV/HTML generation. |
+| `lib/diff.sh` | Previous/current host and port comparison. |
+
+## Operational Notes
+
+- Network scans can reveal sensitive infrastructure details. Protect output permissions and backups.
+- Raw XML, HTML, CSV, and JSON may contain IP addresses, hostnames, MAC addresses, software versions, and certificate identities.
+- Nmap service detection is probabilistic; confirm important findings directly on the target.
+- Masscan discovers TCP ports. UDP discovery is not currently implemented.
+- The tool does not authenticate to services or validate application-level security.
+- A successful scan means the pipeline completed, not that every host or service was reachable.

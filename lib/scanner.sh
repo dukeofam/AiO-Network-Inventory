@@ -43,9 +43,13 @@ scan_hosts() {
 
         log "Quick mode enabled."
         log "Scanning common TCP ports."
+        log "OS fingerprinting disabled in quick mode."
 
         nmap_args+=(
             --top-ports 1000
+            --min-hostgroup 10
+            --max-hostgroup 50
+            -T4
         )
 
     else
@@ -59,8 +63,12 @@ scan_hosts() {
 
     fi
 
-    # OS detection needs elevated privileges.
-    if [[ "$IS_ROOT" == true ]]; then
+    # OS detection needs elevated privileges and is reserved for full scans.
+    if [[ "$QUICK_SCAN" == true ]]; then
+
+        nmap "${nmap_args[@]}"
+
+    elif [[ "$IS_ROOT" == true ]]; then
 
         nmap_args+=(
             -O

@@ -219,7 +219,9 @@ For faster discovery, use:
 sudo ./discover.sh --quick
 ```
 
-Quick mode scans Nmap's top 1000 TCP ports.
+Quick mode scans Nmap's top 1000 TCP ports, skips OS fingerprinting, and uses
+faster host grouping for fleet scans. Use full mode when OS fingerprinting is
+required.
 
 For unattended production runs, Nmap uses a default ten-minute host timeout and
 two retries. These can be adjusted with environment variables:

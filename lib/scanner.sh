@@ -23,13 +23,17 @@ discover_ports() {
         die "Masscan requires root privileges or passwordless sudo."
     fi
 
+    [[ -s "$MASSCAN_LOG" ]] \
+        || die "Masscan did not produce an output file: ${MASSCAN_LOG}"
+
     awk '$1 == "open" && $2 == "tcp" {print $4}' "$MASSCAN_LOG" \
         | sort -V -u > "$HOSTS_FILE"
 
     MASSCAN_PORT_LIST="$(
         awk '$1 == "open" && $2 == "tcp" {print $3}' "$MASSCAN_LOG" \
             | sort -n -u \
-            | paste -sd, -
+            | tr '\n' ',' \
+            | sed 's/,$//'
     )"
 
     HOST_COUNT="$(wc -l < "$HOSTS_FILE" | tr -d ' ')"
@@ -68,7 +72,7 @@ scan_hosts() {
     if [[ "$QUICK_SCAN" == true ]]; then
 
         log "Quick mode enabled."
-        log "Scanning common TCP ports."
+        log "Enriching Masscan-discovered TCP ports."
         log "OS fingerprinting disabled in quick mode."
 
         nmap_args+=(

@@ -37,7 +37,7 @@ VERSION="2.0.0"
 
 NMAP_HOST_TIMEOUT="${NMAP_HOST_TIMEOUT:-10m}"
 NMAP_MAX_RETRIES="${NMAP_MAX_RETRIES:-2}"
-MASSCAN_RATE="${MASSCAN_RATE:-10000}"
+MASSCAN_RATE="${MASSCAN_RATE:-20000}"
 MASSCAN_PORTS="${MASSCAN_PORTS:-}"
 
 DISCOVERY_DIR="${DISCOVERY_DIR:-${SCRIPT_DIR}/network-discovery}"
@@ -74,7 +74,7 @@ Options:
     MASSCAN_PORTS=1-65535
         Override the Masscan TCP port range.
 
-    MASSCAN_RATE=10000
+    MASSCAN_RATE=20000
         Masscan packets per second.
 
     --no-install

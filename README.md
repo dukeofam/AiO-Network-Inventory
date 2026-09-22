@@ -569,8 +569,8 @@ layer, while Masscan provides the speed needed for larger environments:
                    Inventory
 ```
 
-The Masscan rate defaults to `10000` packets per second and can be reduced for
-congested or sensitive networks:
+Masscan uses an asynchronous high-concurrency engine and defaults to `20000`
+packets per second. Reduce the rate for congested or sensitive networks:
 
 ```bash
 MASSCAN_RATE=1000 ./discover.sh --quick --no-install

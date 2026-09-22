@@ -4,7 +4,7 @@ parse_nmap_inventory() {
 
     log "Parsing Nmap XML inventory..."
 
-    python3 - "$NMAP_XML" "$JSON_FILE" "$CSV_FILE" <<'PY'
+    python3 - "$NMAP_XML" "$JSON_FILE" "$CSV_FILE" "${1:-}" <<'PY'
 import csv
 import datetime
 import json
@@ -16,11 +16,61 @@ import xml.etree.ElementTree as ET
 xml_file = sys.argv[1]
 json_file = sys.argv[2]
 csv_file = sys.argv[3]
+masscan_file = sys.argv[4]
 
 tree = ET.parse(xml_file)
 root = tree.getroot()
 
 hosts = []
+
+
+def merge_masscan_results():
+
+    if not masscan_file:
+        return
+
+    known_hosts = {host["ip"]: host for host in hosts}
+
+    try:
+        with open(masscan_file, encoding="utf-8") as f:
+            lines = f
+
+            for line in lines:
+                fields = line.split()
+
+                if len(fields) < 4 or fields[0:2] != ["open", "tcp"]:
+                    continue
+
+                port_number = int(fields[2])
+                ip = fields[3]
+                host_data = known_hosts.get(ip)
+
+                if host_data is None:
+                    host_data = {
+                        "ip": ip,
+                        "hostname": "",
+                        "mac": "",
+                        "os": "",
+                        "ports": []
+                    }
+                    hosts.append(host_data)
+                    known_hosts[ip] = host_data
+
+                if any(port["port"] == port_number for port in host_data["ports"]):
+                    continue
+
+                host_data["ports"].append({
+                    "port": port_number,
+                    "protocol": "tcp",
+                    "service": "",
+                    "product": "",
+                    "version": "",
+                    "extrainfo": "",
+                    "certificate": {}
+                })
+
+    except OSError:
+        pass
 
 
 def reverse_dns(ip):
@@ -160,6 +210,9 @@ for host in root.findall("host"):
         })
 
     hosts.append(host_data)
+
+
+merge_masscan_results()
 
 
 inventory = {

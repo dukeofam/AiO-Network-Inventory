@@ -215,7 +215,7 @@ scan_hosts
 # Inventory
 # ------------------------------------------------------------
 
-parse_nmap_inventory
+parse_nmap_inventory "$MASSCAN_LOG"
 scan_certificate_details
 generate_certificate_summary
 generate_reports

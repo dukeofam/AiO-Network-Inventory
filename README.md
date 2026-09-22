@@ -1,179 +1,278 @@
 # Network Discovery & Infrastructure Inventory
 
-Automated network discovery and infrastructure inventory tool for Linux environments.
+Cross-platform network discovery and infrastructure inventory tool designed for automated infrastructure visibility.
 
-The project uses **Nmap** to discover hosts, open ports, running services, software versions, operating systems and TLS certificates. Results are exported into machine-readable and human-readable formats and can be compared with previous scans to detect infrastructure changes.
+The project discovers hosts, open TCP ports, running services, software versions, operating systems and TLS certificates. Results are stored as structured inventory and can be compared against previous scans to identify infrastructure changes.
 
-The project is designed as a lightweight foundation for **infrastructure discovery, asset inventory, security visibility and certificate lifecycle automation**.
+The tool is designed as a foundation for further automation such as **certificate lifecycle management, ACME/Let's Encrypt integration, Ansible automation, monitoring and CI/CD pipelines**.
 
 ---
 
 ## Features
 
+* Cross-platform support
+* Automatic operating system detection
+* Automatic package-manager detection
+* Automatic dependency installation
 * Automatic local network detection
-* Automatic dependency installation on Debian-based systems
 * Live host discovery
-* Full TCP port discovery
-* Service and version detection
+* Full TCP port scanning
+* Quick scanning mode
+* Service detection
+* Software version detection
 * OS fingerprinting
 * TLS certificate discovery
-* Certificate expiration information
+* Certificate expiration detection
 * JSON inventory
 * CSV inventory
 * HTML report
-* Nmap XML output
-* Human-readable Nmap report
+* Raw Nmap XML output
 * Infrastructure change detection
-* Detection of:
-
-  * new hosts
-  * removed hosts
-  * newly opened ports
-  * closed/removed ports
-* Timestamped scan results
-* `latest` symlink for easy integration with automation
-* Designed to run unattended
+* Timestamped scan history
+* `latest` / `previous` scan references
+* Designed for unattended execution
 
 ---
 
-## Architecture
+# Supported Platforms
+
+| Platform     | Package Manager | Status    |
+| ------------ | --------------- | --------- |
+| Debian       | apt             | Supported |
+| Ubuntu       | apt             | Supported |
+| Linux Mint   | apt             | Supported |
+| Fedora       | dnf             | Supported |
+| RHEL         | dnf/yum         | Supported |
+| Rocky Linux  | dnf             | Supported |
+| AlmaLinux    | dnf             | Supported |
+| Arch Linux   | pacman          | Supported |
+| Manjaro      | pacman          | Supported |
+| Alpine Linux | apk             | Supported |
+| macOS        | Homebrew        | Supported |
+
+Windows is currently not supported.
+
+---
+
+# Architecture
 
 ```text
-                         Network
-                            │
-                            ▼
-                  ┌───────────────────┐
-                  │  Network Discovery│
-                  │                   │
-                  │     discover.sh   │
-                  └─────────┬─────────┘
-                            │
-                            ▼
-                       Nmap Host Scan
-                            │
-                            ▼
-                     Live Host List
-                            │
-                            ▼
-                    Full TCP Port Scan
-                            │
-                            ▼
-                  Service / Version Scan
-                            │
-                  ┌─────────┴─────────┐
-                  │                   │
-                  ▼                   ▼
-              OS Detection       TLS Detection
-                  │                   │
-                  └─────────┬─────────┘
-                            │
-                            ▼
-                    Structured Inventory
-                            │
-             ┌──────────────┼──────────────┐
-             ▼              ▼              ▼
-           JSON             CSV           HTML
-             │
-             ▼
-       Previous Scan
-             │
-             ▼
-       Change Detection
-             │
-             ├── New host
-             ├── Removed host
-             ├── New port
-             └── Removed port
+                           Network
+                              │
+                              ▼
+                   ┌────────────────────┐
+                   │  Network Discovery │
+                   │                    │
+                   │    discover.sh     │
+                   └─────────┬──────────┘
+                             │
+                    OS / Platform Detection
+                             │
+             ┌───────────────┼───────────────┐
+             │               │               │
+             ▼               ▼               ▼
+          Linux           macOS         Package Manager
+             │               │               │
+             └───────────────┴───────────────┘
+                             │
+                             ▼
+                       Dependency Check
+                             │
+                             ▼
+                       Network Detection
+                             │
+                             ▼
+                        Nmap Discovery
+                             │
+                             ▼
+                       Live Host List
+                             │
+                             ▼
+                     Port / Service Scan
+                             │
+                  ┌──────────┴──────────┐
+                  │                     │
+                  ▼                     ▼
+             OS Detection          TLS Detection
+                  │                     │
+                  └──────────┬──────────┘
+                             ▼
+                       Inventory JSON
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+             CSV            HTML          JSON
+              │
+              ▼
+       Previous Inventory
+              │
+              ▼
+        Change Detection
 ```
 
 ---
 
-## Requirements
+# Requirements
 
-The script is intended primarily for:
+The script requires:
 
-* Debian 12/13
-* Ubuntu
-* other Debian-based Linux distributions
+* Bash
+* Nmap
+* Python 3
+* OpenSSL
 
-Required tools:
+The script automatically installs missing dependencies where supported.
 
-* `nmap`
-* `python3`
-* `iproute2`
-* `openssl`
+### Linux
 
-The script automatically installs missing packages using `apt`.
+Supported package managers:
 
-### Permissions
-
-Some Nmap functionality, especially OS detection and certain discovery methods, requires elevated privileges.
-
-Run the script with:
-
-```bash
-sudo ./discover.sh
+```text
+apt
+dnf
+yum
+pacman
+apk
 ```
+
+### macOS
+
+Homebrew is supported.
+
+The script intentionally does **not** install Homebrew automatically because doing so modifies the system beyond the scope of the discovery tool.
+
+Install Homebrew separately if required.
 
 ---
 
-## Installation
+# Installation
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/<your-user>/<your-repository>.git
-cd <your-repository>
+git clone https://github.com/<user>/<repository>.git
+cd <repository>
 ```
 
-Make the script executable:
+Make the main script executable:
 
 ```bash
 chmod +x discover.sh
 ```
 
-Run:
+Run the discovery:
 
 ```bash
 sudo ./discover.sh
 ```
 
-No additional configuration is required for the basic use case.
+The script automatically detects the operating system and installs required packages when possible.
 
 ---
 
-# How It Works
+# Basic Usage
 
-## 1. Network Detection
-
-The script determines the network interface and source IP used to reach the default route.
-
-For example:
-
-```text
-Interface : ens18
-Local IP  : 10.20.0.15
-Network   : 10.20.0.0/24
-```
-
-The detected CIDR is then used as the discovery target.
-
----
-
-## 2. Host Discovery
-
-Nmap first performs host discovery:
+## Automatic network detection
 
 ```bash
-nmap -sn 10.20.0.0/24
+sudo ./discover.sh
 ```
 
-This identifies hosts that appear to be online without performing the full service scan.
+The tool determines the network associated with the default route.
 
-The resulting addresses are stored in:
+Example:
 
 ```text
-hosts.txt
+[+] OS              : debian
+[+] Package manager : apt
+[+] Interface       : ens18
+[+] Local IP        : 10.20.0.15
+[+] Network         : 10.20.0.0/24
+```
+
+---
+
+# Explicit Network
+
+A network can be supplied manually:
+
+```bash
+sudo ./discover.sh --network 10.20.0.0/24
+```
+
+This is useful when:
+
+* scanning a different VLAN
+* scanning through a routed interface
+* running from a jump host
+* testing the tool in a lab environment
+
+---
+
+# Quick Scan
+
+The default mode scans all TCP ports.
+
+For faster discovery, use:
+
+```bash
+sudo ./discover.sh --quick
+```
+
+Quick mode scans Nmap's top 1000 TCP ports.
+
+For unattended production runs, Nmap uses a default ten-minute host timeout and
+two retries. These can be adjusted with environment variables:
+
+```bash
+NMAP_HOST_TIMEOUT=15m NMAP_MAX_RETRIES=3 ./discover.sh --quick
+```
+
+Runs are serialized per output directory. A second run exits instead of
+mixing its results with an active scan.
+
+### Full mode
+
+```text
+1-65535 TCP
+```
+
+### Quick mode
+
+```text
+Top 1000 TCP ports
+```
+
+Full mode provides better visibility but can take significantly longer.
+
+---
+
+# Disable Automatic Installation
+
+To prevent the script from modifying the system:
+
+```bash
+sudo ./discover.sh --no-install
+```
+
+If required dependencies are missing, the script exits with an error describing what must be installed.
+
+This mode is useful for:
+
+* CI/CD
+* immutable infrastructure
+* controlled production environments
+* containers
+* systems where package installation is managed externally
+
+---
+
+# Network Discovery
+
+The first stage performs host discovery:
+
+```bash
+nmap -sn <network>
 ```
 
 Example:
@@ -185,140 +284,96 @@ Example:
 10.20.0.20
 ```
 
----
-
-## 3. Port Discovery
-
-The discovered hosts are then scanned for all TCP ports:
+The addresses are stored in:
 
 ```text
-1-65535
+hosts.txt
 ```
-
-The scan also performs:
-
-* service detection
-* version detection
-* OS detection where possible
-* TLS certificate detection
-
-The main Nmap scan is approximately equivalent to:
-
-```bash
-nmap \
-    -p- \
-    -sV \
-    -O \
-    --open \
-    --script ssl-cert
-```
-
-The exact arguments are handled automatically by `discover.sh`.
 
 ---
 
-## 4. Service Detection
+# Service Discovery
 
-For every discovered open port, Nmap attempts to identify the service.
+Each discovered host is scanned for TCP services.
 
-Example:
+The full scan performs:
 
 ```text
-22/tcp    ssh      OpenSSH 9.2
-80/tcp    http     nginx 1.24.0
-443/tcp   https    nginx 1.24.0
-5432/tcp  postgres PostgreSQL
+TCP port discovery
+        +
+service detection
+        +
+version detection
+        +
+OS detection
+        +
+TLS certificate detection
 ```
 
-Where available, additional information such as product and version is stored.
+Example result:
 
----
+```text
+10.20.0.12
 
-## 5. OS Detection
-
-Nmap attempts to fingerprint the operating system.
-
-Example:
-
-```json
-{
-  "ip": "10.20.0.12",
-  "os": "Linux"
-}
+22/tcp    ssh       OpenSSH
+80/tcp    http      nginx
+443/tcp   https     nginx
+5432/tcp  postgres  PostgreSQL
 ```
-
-OS detection is inherently probabilistic and may not always produce a result.
 
 ---
 
 # TLS Certificate Discovery
 
-The scan uses Nmap's `ssl-cert` NSE script to inspect TLS-enabled services.
+TLS-enabled services are inspected using both Nmap and Python's TLS support.
 
-For example:
-
-```text
-443/tcp
-8443/tcp
-9443/tcp
-```
-
-The inventory can contain:
+The tool attempts to identify:
 
 * certificate subject
 * certificate issuer
-* validity start
-* validity end
-* SAN information where available
+* serial number
+* validity period
+* expiration date
+* SAN entries
+* days remaining
+* certificate status
 
-Example:
-
-```json
-"certificate": {
-  "subject": "CN=git.example.com",
-  "issuer": "Let's Encrypt",
-  "valid_from": "...",
-  "valid_to": "..."
-}
-```
-
-This provides the foundation for future certificate lifecycle automation.
-
----
-
-# Output
-
-Every execution creates a timestamped directory.
-
-Example:
+Certificate status is classified as:
 
 ```text
-network-discovery/
-├── 20260922_113000/
-│   ├── hosts.txt
-│   ├── nmap.xml
-│   ├── nmap.txt
-│   ├── inventory.json
-│   ├── inventory.csv
-│   ├── inventory.html
-│   ├── certificates.txt
-│   └── changes.txt
-│
-└── latest -> 20260922_113000
+OK
+WARNING
+CRITICAL
+EXPIRED
+UNKNOWN
 ```
+
+The default thresholds are:
+
+| Status   | Condition                          |
+| -------- | ---------------------------------- |
+| OK       | > 30 days                          |
+| WARNING  | 8–30 days                          |
+| CRITICAL | 0–7 days                           |
+| EXPIRED  | < 0 days                           |
+| UNKNOWN  | Expiration could not be determined |
 
 ---
 
-## JSON Inventory
+# Inventory
 
-`inventory.json` is intended for automation and integration with other systems.
+The primary machine-readable inventory is:
+
+```text
+inventory.json
+```
 
 Example:
 
 ```json
 {
   "generated_at": "2026-09-22T11:30:00+00:00",
-  "host_count": 2,
+  "host_count": 1,
   "hosts": [
     {
       "ip": "10.20.0.12",
@@ -331,20 +386,14 @@ Example:
           "protocol": "tcp",
           "service": "ssh",
           "product": "OpenSSH",
-          "version": "9.2",
-          "certificate": {}
+          "version": "9.2"
         },
         {
           "port": 443,
           "protocol": "tcp",
           "service": "https",
           "product": "nginx",
-          "version": "1.24.0",
-          "certificate": {
-            "subject": "CN=git.example.com",
-            "issuer": "Let's Encrypt",
-            "valid_to": "..."
-          }
+          "version": "1.24.0"
         }
       ]
     }
@@ -352,326 +401,314 @@ Example:
 }
 ```
 
-The JSON output can later be consumed by:
+This JSON can later be consumed by:
 
 * Ansible
-* Python automation
-* monitoring systems
-* CMDB systems
+* Python
 * GitLab CI/CD
-* certificate management workflows
+* monitoring
+* CMDB systems
 * custom dashboards
+* certificate automation
 
 ---
 
-# CSV Inventory
+# Output Structure
 
-`inventory.csv` provides a flat representation suitable for spreadsheets and simple data processing.
-
-Example:
+Every scan creates a timestamped directory:
 
 ```text
-IP,Hostname,OS,Port,Protocol,Service,Product,Version
-10.20.0.12,gitlab,Linux,22,tcp,ssh,OpenSSH,9.2
-10.20.0.12,gitlab,Linux,443,tcp,https,nginx,1.24.0
+network-discovery/
+│
+├── 20260922_113000/
+│   ├── hosts.txt
+│   ├── nmap.xml
+│   ├── nmap.txt
+│   ├── inventory.json
+│   ├── inventory.csv
+│   ├── inventory.html
+│   ├── certificates.txt
+│   ├── changes.txt
+│   └── metadata.json
+│
+└── latest -> 20260922_113000
 ```
+
+The `latest` symlink always points to the most recent scan.
+
+After at least two scans:
+
+```text
+previous -> <previous scan>
+```
+
+is also available.
 
 ---
 
 # HTML Report
 
-`inventory.html` provides a simple human-readable overview.
+The HTML report can be opened in any browser:
 
-Open it locally:
+```bash
+open network-discovery/latest/inventory.html
+```
+
+On Linux:
 
 ```bash
 xdg-open network-discovery/latest/inventory.html
 ```
 
-or copy it to a web server / artifact repository.
+The report provides an overview of:
 
-The report contains:
-
-* IP address
-* hostname
-* operating system
-* open ports
+* hosts
+* IP addresses
+* hostnames
+* operating systems
+* ports
 * services
-* product
-* version
-* TLS certificate information
+* versions
+* TLS certificates
 
 ---
 
 # Change Detection
 
-Every scan is compared with the previous scan.
-
-The script detects:
-
-### New hosts
-
-```text
-[NEW HOST] 10.20.0.31 docker01
-```
-
-### Removed hosts
-
-```text
-[REMOVED HOST] 10.20.0.31 docker01
-```
-
-### Newly opened ports
-
-```text
-[NEW PORT] 10.20.0.12 8080/tcp
-```
-
-### Removed ports
-
-```text
-[REMOVED PORT] 10.20.0.20 9200/tcp
-```
-
-The result is stored in:
-
-```text
-changes.txt
-```
-
-This makes the discovery tool suitable for scheduled execution.
-
----
-
-# Configuration
-
-The default output directory is:
-
-```text
-./network-discovery
-```
-
-It can be changed using the `DISCOVERY_DIR` environment variable.
+The tool automatically compares the current scan with the previous scan.
 
 Example:
 
-```bash
-sudo DISCOVERY_DIR=/var/lib/network-discovery ./discover.sh
+```text
+[NEW HOST] 10.20.0.31 docker01
+[NEW PORT] 10.20.0.12 8080/tcp
+[REMOVED PORT] 10.20.0.20 9200/tcp
 ```
 
----
+This makes it possible to detect infrastructure changes without manually comparing inventories.
 
-# Automation
-
-The script is designed to be suitable for scheduled execution.
-
-For example, a daily cron job could run:
-
-```bash
-0 3 * * * /opt/network-discovery/discover.sh
-```
-
-Or it can be executed by:
-
-* GitLab CI/CD
-* Jenkins
-* Ansible
-* systemd timers
-* cron
-* other automation platforms
-
-A scheduled scan can therefore provide continuous visibility into infrastructure changes.
-
----
-
-# Example Workflow
-
-A simple operational workflow could look like:
+Potential future integrations include:
 
 ```text
-                   Scheduled Scan
-                         │
-                         ▼
-                    discover.sh
-                         │
-             ┌───────────┴───────────┐
-             ▼                       ▼
-       Current Inventory       Previous Inventory
-             │                       │
-             └───────────┬───────────┘
-                         ▼
-                  Change Detection
-                         │
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
-          New Host    New Port    TLS Change
-             │           │           │
-             └───────────┴───────────┘
-                         ▼
-                       Alert
+New Host
+   │
+   ▼
+GitLab CI
+   │
+   ▼
+Alert
 ```
 
----
+or:
 
-# Security Considerations
-
-Network scanning should only be performed on networks and systems where you have explicit authorization to perform scanning.
-
-The script performs active network discovery and service enumeration. Depending on the environment, scanning can:
-
-* generate network traffic
-* trigger IDS/IPS alerts
-* trigger security monitoring
-* interact with exposed services
-* consume network or host resources
-
-The default scan uses Nmap timing `-T3` to provide a relatively conservative scanning profile.
-
-For production environments, scanning frequency and timing should be adapted to the organization's security and operational requirements.
+```text
+New Port
+   │
+   ▼
+Security Review
+```
 
 ---
 
 # Why Nmap?
 
-Nmap was selected as the primary discovery engine because the project needs more than simple port scanning.
+Nmap was selected as the primary discovery engine because the project requires more than simple port scanning.
 
-The inventory requires:
+The required information includes:
 
 ```text
 Host discovery
-     +
 Port discovery
-     +
 Service detection
-     +
 Version detection
-     +
-OS detection
-     +
-TLS certificate discovery
+OS fingerprinting
+TLS inspection
 ```
 
-Nmap provides these capabilities within one mature tool and produces XML output that can be reliably consumed by automation.
+Nmap provides these capabilities and produces structured XML output that can be processed by the inventory layer.
 
 ---
 
 # Why Not Masscan?
 
-`masscan` is extremely useful for high-speed scanning of large address ranges.
+Masscan is optimized for extremely fast scanning of very large address ranges.
 
-However, this project prioritizes:
-
-* service identification
-* version information
-* OS fingerprinting
-* TLS information
-* structured output
-
-For a typical enterprise subnet such as:
+For the intended use case, Nmap provides more useful information per scan:
 
 ```text
-10.20.0.0/24
+                Nmap
+
+                 │
+       ┌─────────┼─────────┐
+       ▼         ▼         ▼
+     Ports    Services     OS
+                 │
+                 ▼
+             Versions
+                 │
+                 ▼
+               TLS
 ```
 
-Nmap is sufficient and keeps the architecture simple.
+For a small or medium enterprise subnet, Nmap is generally sufficient.
 
-For significantly larger environments, a future architecture could use:
+For larger environments, Masscan could later be introduced as a fast discovery layer:
 
 ```text
-                  masscan
-                     │
-             Fast port discovery
-                     │
-                     ▼
-                  Nmap
-                     │
-              Deep inspection
-                     │
-                     ▼
-               Inventory
+                    Network
+                       │
+                       ▼
+                   Masscan
+                       │
+                Open ports
+                       │
+                       ▼
+                    Nmap
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+       Services       OS           TLS
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                   Inventory
 ```
 
-Masscan can therefore be introduced later as an optimization rather than as a requirement.
+This architecture is intentionally left as a future optimization.
 
 ---
 
-# Roadmap
-
-The current implementation provides the basic discovery and inventory layer.
-
-Planned improvements include:
-
-## Certificate Management
-
-Integrate ACME certificate management using [`lego`](https://github.com/go-acme/lego).
-
-Potential workflow:
+# Project Structure
 
 ```text
-Discovery
-    │
-    ▼
-HTTPS Service
-    │
-    ▼
-Certificate Inventory
-    │
-    ▼
-Expiration Check
-    │
-    ├── OK
-    │
-    └── Expiring
-           │
-           ▼
-          lego
-           │
-           ▼
-      ACME Provider
-           │
-           ▼
-      New Certificate
+.
+├── discover.sh
+│
+├── lib/
+│   ├── common.sh
+│   ├── os.sh
+│   ├── packages.sh
+│   ├── network.sh
+│   ├── scanner.sh
+│   ├── certificates.sh
+│   ├── inventory.sh
+│   └── diff.sh
+│
+├── README.md
+├── LICENSE
+└── .gitignore
 ```
 
-## GitLab CI/CD
+### Module responsibilities
 
-Automate scans using scheduled GitLab pipelines.
+| Module            | Responsibility                         |
+| ----------------- | -------------------------------------- |
+| `discover.sh`     | Main orchestration                     |
+| `common.sh`       | Logging, directories, common functions |
+| `os.sh`           | OS and package-manager detection       |
+| `packages.sh`     | Dependency installation                |
+| `network.sh`      | Network/interface detection            |
+| `scanner.sh`      | Nmap execution                         |
+| `certificates.sh` | TLS inspection                         |
+| `inventory.sh`    | JSON/CSV/HTML generation               |
+| `diff.sh`         | Previous/current comparison            |
 
-Possible pipeline:
+This separation keeps platform-specific functionality isolated and makes the project easier to extend.
+
+---
+
+# Automation
+
+The tool is designed to run unattended.
+
+For example, a daily scan could be scheduled using cron:
+
+```cron
+0 3 * * * /opt/network-discovery/discover.sh
+```
+
+Or through a systemd timer.
+
+It can also be executed from:
+
+* GitLab CI/CD
+* Jenkins
+* Ansible
+* scheduled jobs
+* monitoring systems
+
+---
+
+# CI/CD Integration
+
+A future GitLab pipeline can look like:
 
 ```text
-GitLab Schedule
-      │
-      ▼
+                 GitLab Schedule
+                        │
+                        ▼
+                Network Discovery
+                        │
+              ┌─────────┼─────────┐
+              ▼         ▼         ▼
+           JSON        CSV       HTML
+              │         │         │
+              └─────────┼─────────┘
+                        ▼
+                 GitLab Artifacts
+                        │
+                        ▼
+                 Change Detection
+                        │
+              ┌─────────┴─────────┐
+              ▼                   ▼
+          No changes          Changes found
+                                  │
+                                  ▼
+                                Alert
+```
+
+---
+
+# Future Roadmap
+
+## Certificate Lifecycle Management
+
+Integrate ACME certificate automation using [`go-acme/lego`](https://github.com/go-acme/lego).
+
+Planned workflow:
+
+```text
 Network Discovery
-      │
-      ├── inventory.json
-      ├── inventory.csv
-      ├── inventory.html
-      └── changes.txt
-                │
-                ▼
-          GitLab Artifacts
+       │
+       ▼
+HTTPS Services
+       │
+       ▼
+Certificate Inventory
+       │
+       ▼
+Expiration Check
+       │
+       ├── OK
+       │
+       └── Expiring
+              │
+              ▼
+             lego
+              │
+              ▼
+        ACME Provider
+              │
+              ▼
+        New Certificate
 ```
 
-## Monitoring
-
-Integrate certificate expiration with monitoring and alerting.
-
-Potential integrations:
-
-* Uptime Kuma
-* Prometheus
-* Grafana
-* Alertmanager
-* email
-* Slack / Teams
+---
 
 ## Ansible Integration
 
-Use the generated JSON inventory as an input to Ansible automation.
-
-For example:
+The generated inventory can become an input to Ansible:
 
 ```text
 Nmap
@@ -684,91 +721,170 @@ Ansible
  │
  ├── configure host
  ├── install packages
- ├── deploy certificate
- └── restart service
-```
-
-## Asset Change Alerts
-
-Future versions can generate alerts when:
-
-* a new server appears
-* an unexpected port opens
-* a service version changes
-* a server disappears
-* a TLS certificate changes
-* a certificate approaches expiration
-
----
-
-# Project Structure
-
-```text
-.
-├── discover.sh
-├── README.md
-└── network-discovery/
-    └── <timestamped scan results>
-```
-
-Generated scan results should generally not be committed to the repository.
-
-Recommended `.gitignore`:
-
-```gitignore
-network-discovery/
-*.log
+ ├── deploy configuration
+ └── deploy certificate
 ```
 
 ---
 
-# Use Case
+## Monitoring
 
-This project can serve as a foundation for an internal infrastructure discovery and certificate-management platform.
+Potential monitoring integrations:
 
-A possible end-to-end architecture is:
+* Prometheus
+* Grafana
+* Uptime Kuma
+* Alertmanager
+* email
+* Slack
+* Microsoft Teams
+
+Example:
 
 ```text
-                    ┌───────────────┐
-                    │    GitLab     │
-                    │    CI/CD      │
-                    └───────┬───────┘
-                            │
-                       Scheduled Job
-                            │
-                            ▼
-                  ┌───────────────────┐
-                  │ Network Discovery │
-                  │                   │
-                  │      Nmap         │
-                  └─────────┬─────────┘
-                            │
-                            ▼
-                    Infrastructure
-                       Inventory
-                            │
-          ┌─────────────────┼─────────────────┐
-          ▼                 ▼                 ▼
-       Servers           Services        Certificates
-          │                 │                 │
-          └─────────────────┼─────────────────┘
-                            ▼
-                     Change Detection
-                            │
-                            ▼
-                        Alerting
-                            │
-                            ▼
-                    Certificate Lifecycle
-                            │
-                            ▼
-                           ACME
-                            │
-                            ▼
-                          lego
+Certificate
+    │
+    ▼
+30 days
+    │
+    ▼
+WARNING
+    │
+    ▼
+Monitoring
+    │
+    ▼
+Alert
 ```
 
-The goal is to move infrastructure management from **manual discovery and manual certificate handling** toward a reproducible and automated workflow.
+---
+
+## Asset Management
+
+The inventory can eventually serve as a lightweight asset discovery layer:
+
+```text
+Host
+ ├── IP
+ ├── Hostname
+ ├── MAC
+ ├── OS
+ ├── Services
+ ├── Versions
+ └── Certificates
+```
+
+This can later be integrated with a CMDB or internal infrastructure database.
+
+---
+
+# Security Considerations
+
+This tool performs active network scanning.
+
+Only scan networks and systems where you have explicit authorization to perform network discovery.
+
+Scanning can:
+
+* generate significant network traffic
+* trigger IDS/IPS alerts
+* trigger security monitoring
+* interact with exposed services
+* consume system resources
+
+The default Nmap timing is deliberately conservative:
+
+```text
+-T3
+```
+
+For production environments, scan frequency, scope and timing should be agreed with the relevant infrastructure and security teams.
+
+---
+
+# Design Principles
+
+The project follows several principles:
+
+### Automation first
+
+The tool should require as little manual configuration as possible.
+
+### Cross-platform
+
+Platform-specific behavior should be isolated instead of assuming Linux commands are available everywhere.
+
+### Machine-readable output
+
+JSON is treated as the primary automation format.
+
+### Human-readable output
+
+HTML and CSV make the inventory accessible to administrators.
+
+### Reproducibility
+
+Each scan is timestamped and preserved.
+
+### Change visibility
+
+Infrastructure changes should be detectable automatically.
+
+### Extensibility
+
+The discovery layer should be usable as a foundation for future automation.
+
+---
+
+# Example End-to-End Architecture
+
+The long-term goal is an automated infrastructure lifecycle:
+
+```text
+                         GitLab
+                           │
+                    Scheduled Pipeline
+                           │
+                           ▼
+                 ┌──────────────────┐
+                 │ Network Discovery│
+                 │                  │
+                 │      Nmap        │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                   Asset Inventory
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+        Hosts          Services       Certificates
+          │               │               │
+          └───────────────┼───────────────┘
+                          ▼
+                   Change Detection
+                          │
+             ┌────────────┴────────────┐
+             ▼                         ▼
+        Infrastructure             Certificate
+           changes                  lifecycle
+             │                         │
+             ▼                         ▼
+           Alert                     lego
+                                       │
+                                       ▼
+                                     ACME
+                                       │
+                                       ▼
+                                 New Certificate
+                                       │
+                                       ▼
+                                   Deployment
+                                       │
+                                       ▼
+                                    Service
+```
+
+The project therefore provides the **discovery and inventory layer** for a larger infrastructure automation platform.
 
 ---
 
@@ -777,5 +893,3 @@ The goal is to move infrastructure management from **manual discovery and manual
 ```text
 Apache License 2.0
 ```
-
-See the selected license file for the full terms.

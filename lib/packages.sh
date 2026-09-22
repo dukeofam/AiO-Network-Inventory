@@ -7,6 +7,7 @@ install_dependencies() {
     local missing=()
 
     command_exists nmap || missing+=("nmap")
+    command_exists masscan || missing+=("masscan")
     command_exists python3 || missing+=("python3")
     command_exists openssl || missing+=("openssl")
 
@@ -41,6 +42,7 @@ install_dependencies() {
             ${SUDO} DEBIAN_FRONTEND=noninteractive \
                 apt-get install -y \
                 nmap \
+                masscan \
                 python3 \
                 openssl
 
@@ -52,6 +54,7 @@ install_dependencies() {
 
             ${SUDO} dnf install -y \
                 nmap \
+                masscan \
                 python3 \
                 openssl
 
@@ -63,6 +66,7 @@ install_dependencies() {
 
             ${SUDO} yum install -y \
                 nmap \
+                masscan \
                 python3 \
                 openssl
 
@@ -74,6 +78,7 @@ install_dependencies() {
 
             ${SUDO} pacman -Sy --noconfirm \
                 nmap \
+                masscan \
                 python \
                 openssl
 
@@ -85,6 +90,7 @@ install_dependencies() {
 
             ${SUDO} apk add \
                 nmap \
+                masscan \
                 python3 \
                 openssl
 
@@ -106,6 +112,7 @@ Then run this script again."
             log "Installing dependencies using Homebrew..."
 
             command_exists nmap || brew install nmap
+            command_exists masscan || brew install masscan
             command_exists python3 || brew install python
             command_exists openssl || brew install openssl
 
@@ -126,6 +133,9 @@ Install manually:
 
     command_exists nmap \
         || die "nmap is still unavailable after installation."
+
+    command_exists masscan \
+        || die "masscan is still unavailable after installation."
 
     command_exists python3 \
         || die "python3 is still unavailable after installation."

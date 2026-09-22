@@ -27,6 +27,7 @@ The tool is designed as a foundation for further automation such as **certificat
 * CSV inventory
 * HTML report
 * Raw Nmap XML output
+* Raw Masscan output
 * Infrastructure change detection
 * Timestamped scan history
 * `latest` / `previous` scan references
@@ -117,6 +118,7 @@ Windows is currently not supported.
 The script requires:
 
 * Bash
+* Masscan
 * Nmap
 * Python 3
 * OpenSSL
@@ -219,9 +221,10 @@ For faster discovery, use:
 sudo ./discover.sh --quick
 ```
 
-Quick mode scans Nmap's top 1000 TCP ports, skips OS fingerprinting, and uses
-faster host grouping for fleet scans. Use full mode when OS fingerprinting is
-required.
+Quick mode uses Masscan to sweep TCP ports 1-10000 by default, then asks Nmap to
+enrich only the ports found open. It skips OS fingerprinting and uses faster
+host grouping for fleet scans. Use full mode when OS fingerprinting is
+required. Set `MASSCAN_PORTS` to override the range.
 
 For unattended production runs, Nmap uses a default ten-minute host timeout and
 two retries. These can be adjusted with environment variables:
@@ -241,9 +244,7 @@ mixing its results with an active scan.
 
 ### Quick mode
 
-```text
-Top 1000 TCP ports
-```
+Masscan-discovered open TCP ports, with Nmap service/version/TLS enrichment.
 
 Full mode provides better visibility but can take significantly longer.
 
@@ -271,10 +272,10 @@ This mode is useful for:
 
 # Network Discovery
 
-The first stage performs host discovery:
+The first stage performs fast host and TCP port discovery with Masscan:
 
 ```bash
-nmap -sn <network>
+masscan <network> -p 1-65535 --rate 10000 -oL masscan.txt
 ```
 
 Example:
@@ -286,7 +287,7 @@ Example:
 10.20.0.20
 ```
 
-The addresses are stored in:
+Hosts with open TCP ports are stored in:
 
 ```text
 hosts.txt
@@ -424,6 +425,7 @@ network-discovery/
 │
 ├── 20260922_113000/
 │   ├── hosts.txt
+│   ├── masscan.txt
 │   ├── nmap.xml
 │   ├── nmap.txt
 │   ├── inventory.json
@@ -512,9 +514,11 @@ Security Review
 
 ---
 
-# Why Nmap?
+# Scanning Architecture
 
-Nmap was selected as the primary discovery engine because the project requires more than simple port scanning.
+Masscan performs the fast TCP port sweep. Nmap then enriches only the ports
+Masscan found open, which preserves service, version, OS, and TLS inspection
+without probing every closed or filtered port a second time.
 
 The required information includes:
 
@@ -527,15 +531,8 @@ OS fingerprinting
 TLS inspection
 ```
 
-Nmap provides these capabilities and produces structured XML output that can be processed by the inventory layer.
-
----
-
-# Why Not Masscan?
-
-Masscan is optimized for extremely fast scanning of very large address ranges.
-
-For the intended use case, Nmap provides more useful information per scan:
+Nmap produces structured XML output that can be processed by the inventory
+layer, while Masscan provides the speed needed for larger environments:
 
 ```text
                 Nmap
@@ -551,10 +548,6 @@ For the intended use case, Nmap provides more useful information per scan:
                  ▼
                TLS
 ```
-
-For a small or medium enterprise subnet, Nmap is generally sufficient.
-
-For larger environments, Masscan could later be introduced as a fast discovery layer:
 
 ```text
                     Network
@@ -576,7 +569,12 @@ For larger environments, Masscan could later be introduced as a fast discovery l
                    Inventory
 ```
 
-This architecture is intentionally left as a future optimization.
+The Masscan rate defaults to `10000` packets per second and can be reduced for
+congested or sensitive networks:
+
+```bash
+MASSCAN_RATE=1000 ./discover.sh --quick --no-install
+```
 
 ---
 
@@ -610,7 +608,7 @@ This architecture is intentionally left as a future optimization.
 | `os.sh`           | OS and package-manager detection       |
 | `packages.sh`     | Dependency installation                |
 | `network.sh`      | Network/interface detection            |
-| `scanner.sh`      | Nmap execution                         |
+| `scanner.sh`      | Masscan discovery and Nmap enrichment  |
 | `certificates.sh` | TLS inspection                         |
 | `inventory.sh`    | JSON/CSV/HTML generation               |
 | `diff.sh`         | Previous/current comparison            |

@@ -68,6 +68,7 @@ init_run_directory() {
     HOSTS_FILE="${RUN_DIR}/hosts.txt"
     NMAP_XML="${RUN_DIR}/nmap.xml"
     NMAP_LOG="${RUN_DIR}/nmap.txt"
+    MASSCAN_LOG="${RUN_DIR}/masscan.txt"
 
     JSON_FILE="${RUN_DIR}/inventory.json"
     CSV_FILE="${RUN_DIR}/inventory.csv"

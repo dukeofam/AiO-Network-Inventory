@@ -1,22 +1,50 @@
 #!/usr/bin/env bash
 
-discover_hosts() {
+discover_ports() {
 
-    log "Discovering live hosts..."
+    local scan_ports="${MASSCAN_PORTS:-1-65535}"
 
-    nmap \
-        -sn \
-        -T3 \
-        --host-timeout "${NMAP_HOST_TIMEOUT:-10m}" \
-        "$NETWORK" \
-        -oG - \
-        | awk '/Status: Up/{print $2}' \
-        | sort -V \
-        > "$HOSTS_FILE"
+    if [[ "$QUICK_SCAN" == true && -z "${MASSCAN_PORTS:-}" ]]; then
+        scan_ports="1-10000"
+    fi
+
+    log "Discovering open TCP ports with Masscan..."
+    log "Port range: ${scan_ports}; rate: ${MASSCAN_RATE} packets/sec."
+
+    local masscan_args=(
+        "$NETWORK"
+        -p "$scan_ports"
+        --rate "$MASSCAN_RATE"
+        --wait 3
+        -oL "$MASSCAN_LOG"
+    )
+
+    if [[ "${IS_ROOT:-false}" == true ]]; then
+        masscan "${masscan_args[@]}"
+    elif [[ "${CAN_ELEVATE:-false}" == true ]]; then
+        $SUDO masscan "${masscan_args[@]}"
+    else
+        die "Masscan requires root privileges or passwordless sudo."
+    fi
+
+    awk '$1 == "open" && $2 == "tcp" {print $4}' "$MASSCAN_LOG" \
+        | sort -V -u > "$HOSTS_FILE"
+
+    MASSCAN_PORT_LIST="$(
+        awk '$1 == "open" && $2 == "tcp" {print $3}' "$MASSCAN_LOG" \
+            | sort -n -u \
+            | paste -sd, -
+    )"
 
     HOST_COUNT="$(wc -l < "$HOSTS_FILE" | tr -d ' ')"
 
-    log "Live hosts discovered: ${HOST_COUNT}"
+    if [[ -z "$MASSCAN_PORT_LIST" ]]; then
+        warn "Masscan found no open TCP ports."
+        return 1
+    fi
+
+    log "Masscan found ${HOST_COUNT} hosts with open TCP ports."
+    log "Targeted ports: ${MASSCAN_PORT_LIST}"
 }
 
 
@@ -35,6 +63,7 @@ scan_hosts() {
         --max-retries "${NMAP_MAX_RETRIES:-2}"
         --script ssl-cert
         -iL "$HOSTS_FILE"
+        -p "$MASSCAN_PORT_LIST"
         -oX "$NMAP_XML"
         -oN "$NMAP_LOG"
     )
@@ -46,7 +75,6 @@ scan_hosts() {
         log "OS fingerprinting disabled in quick mode."
 
         nmap_args+=(
-            --top-ports 1000
             --min-hostgroup 10
             --max-hostgroup 50
             -T4
@@ -55,11 +83,7 @@ scan_hosts() {
     else
 
         log "Full mode enabled."
-        log "Scanning all TCP ports (1-65535)."
-
-        nmap_args+=(
-            -p-
-        )
+        log "Enriching every Masscan-discovered open TCP port."
 
     fi
 

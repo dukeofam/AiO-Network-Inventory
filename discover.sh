@@ -37,6 +37,8 @@ VERSION="2.0.0"
 
 NMAP_HOST_TIMEOUT="${NMAP_HOST_TIMEOUT:-10m}"
 NMAP_MAX_RETRIES="${NMAP_MAX_RETRIES:-2}"
+MASSCAN_RATE="${MASSCAN_RATE:-10000}"
+MASSCAN_PORTS="${MASSCAN_PORTS:-}"
 
 DISCOVERY_DIR="${DISCOVERY_DIR:-${SCRIPT_DIR}/network-discovery}"
 TARGET_NETWORK=""
@@ -67,7 +69,13 @@ Options:
 
     --quick
         Faster scan.
-        Scans common ports instead of all 65535 TCP ports.
+        Sweeps TCP ports 1-10000 with Masscan and skips OS detection.
+
+    MASSCAN_PORTS=1-65535
+        Override the Masscan TCP port range.
+
+    MASSCAN_RATE=10000
+        Masscan packets per second.
 
     --no-install
         Never attempt to install missing dependencies.
@@ -184,11 +192,9 @@ fi
 # Discovery
 # ------------------------------------------------------------
 
-discover_hosts
+if ! discover_ports; then
 
-if [[ ! -s "$HOSTS_FILE" ]]; then
-
-    warn "No live hosts discovered."
+    warn "No open TCP ports discovered."
 
     create_empty_inventory
     generate_reports

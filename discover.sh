@@ -37,8 +37,8 @@ VERSION="2.0.0"
 
 NMAP_HOST_TIMEOUT="${NMAP_HOST_TIMEOUT:-10m}"
 NMAP_MAX_RETRIES="${NMAP_MAX_RETRIES:-2}"
-MASSCAN_RATE="${MASSCAN_RATE:-20000}"
-MASSCAN_RETRY_RATE="${MASSCAN_RETRY_RATE:-5000}"
+MASSCAN_RATE="${MASSCAN_RATE:-100000}"
+MASSCAN_RETRY_RATE="${MASSCAN_RETRY_RATE:-25000}"
 MASSCAN_RETRIES="${MASSCAN_RETRIES:-1}"
 MASSCAN_PORTS="${MASSCAN_PORTS:-}"
 
@@ -46,6 +46,7 @@ DISCOVERY_DIR="${DISCOVERY_DIR:-${SCRIPT_DIR}/network-discovery}"
 TARGET_NETWORK=""
 NO_INSTALL=false
 QUICK_SCAN=false
+DISCOVERY_ONLY=false
 
 usage() {
     cat <<EOF
@@ -73,13 +74,16 @@ Options:
         Faster scan.
         Sweeps all TCP ports with Masscan and skips OS detection.
 
+    --discovery-only
+        Fastest mode. Stores Masscan hosts and open TCP ports without Nmap enrichment.
+
     MASSCAN_PORTS=1-65535
         Override the Masscan TCP port range.
 
-    MASSCAN_RATE=20000
+    MASSCAN_RATE=100000
         Masscan packets per second.
 
-    MASSCAN_RETRY_RATE=5000
+    MASSCAN_RETRY_RATE=25000
         Retry rate when the first sweep finds no open ports.
 
     --no-install
@@ -125,6 +129,12 @@ while [[ $# -gt 0 ]]; do
             ;;
 
         --quick)
+            QUICK_SCAN=true
+            shift
+            ;;
+
+        --discovery-only)
+            DISCOVERY_ONLY=true
             QUICK_SCAN=true
             shift
             ;;
@@ -209,16 +219,24 @@ if ! discover_ports; then
 
 fi
 
-scan_hosts
+if [[ "$DISCOVERY_ONLY" == true ]]; then
+    log "Discovery-only mode enabled. Skipping Nmap enrichment."
+    create_masscan_inventory
+else
+    scan_hosts
+    parse_nmap_inventory "$MASSCAN_LOG"
+    scan_certificate_details
+    generate_certificate_summary
+    generate_reports
+fi
 
 # ------------------------------------------------------------
 # Inventory
 # ------------------------------------------------------------
 
-parse_nmap_inventory "$MASSCAN_LOG"
-scan_certificate_details
-generate_certificate_summary
-generate_reports
+if [[ "$DISCOVERY_ONLY" == true ]]; then
+    generate_reports
+fi
 
 # ------------------------------------------------------------
 # Change detection

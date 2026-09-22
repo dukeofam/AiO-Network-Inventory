@@ -76,6 +76,74 @@ init_run_directory() {
     METADATA_FILE="${RUN_DIR}/metadata.json"
 }
 
+create_masscan_inventory() {
+
+    log "Building inventory directly from Masscan output..."
+
+    python3 - "$MASSCAN_LOG" "$JSON_FILE" "$CSV_FILE" <<'PY'
+import csv
+import datetime
+import json
+import sys
+
+masscan_file, json_file, csv_file = sys.argv[1:]
+hosts = {}
+
+with open(masscan_file, encoding="utf-8") as source:
+    for line in source:
+        fields = line.split()
+        if len(fields) < 4 or fields[:2] != ["open", "tcp"]:
+            continue
+
+        port = int(fields[2])
+        ip = fields[3]
+        host = hosts.setdefault(ip, {
+            "ip": ip,
+            "hostname": "",
+            "mac": "",
+            "os": "",
+            "ports": []
+        })
+
+        if any(item["port"] == port for item in host["ports"]):
+            continue
+
+        host["ports"].append({
+            "port": port,
+            "protocol": "tcp",
+            "service": "",
+            "product": "",
+            "version": "",
+            "extrainfo": "",
+            "certificate": {}
+        })
+
+inventory = {
+    "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "host_count": len(hosts),
+    "hosts": list(hosts.values())
+}
+
+with open(json_file, "w", encoding="utf-8") as target:
+    json.dump(inventory, target, indent=2)
+    target.write("\n")
+
+with open(csv_file, "w", newline="", encoding="utf-8") as target:
+    writer = csv.writer(target)
+    writer.writerow(["IP", "Hostname", "MAC", "OS", "Port", "Protocol", "Service", "Product", "Version", "ExtraInfo"])
+    for host in inventory["hosts"]:
+        for port in host["ports"]:
+            writer.writerow([
+                host["ip"], host["hostname"], host["mac"], host["os"],
+                port["port"], port["protocol"], port["service"],
+                port["product"], port["version"], port["extrainfo"]
+            ])
+PY
+
+    : > "$CERTIFICATES_FILE"
+    echo "Discovery-only mode: Nmap enrichment was skipped." > "$CHANGES_FILE"
+}
+
 validate_cidr() {
 
     local cidr="$1"
@@ -133,6 +201,7 @@ finalize_run() {
   "local_ip": "${LOCAL_IP:-}",
   "network": "${NETWORK}",
   "quick_scan": ${QUICK_SCAN},
+    "discovery_only": ${DISCOVERY_ONLY:-false},
   "host_count": ${HOST_COUNT:-0}
 }
 EOF

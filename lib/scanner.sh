@@ -23,8 +23,29 @@ discover_ports() {
         die "Masscan requires root privileges or passwordless sudo."
     fi
 
-    [[ -s "$MASSCAN_LOG" ]] \
+    [[ -f "$MASSCAN_LOG" ]] \
         || die "Masscan did not produce an output file: ${MASSCAN_LOG}"
+
+    local open_count
+    open_count="$(awk '$1 == "open" && $2 == "tcp" {count++} END {print count + 0}' "$MASSCAN_LOG")"
+
+    if [[ "$open_count" -eq 0 && "${MASSCAN_RETRIES:-0}" -gt 0 ]]; then
+        warn "Masscan reported no open TCP ports; retrying at ${MASSCAN_RETRY_RATE} packets/sec."
+
+        local retry_args=(
+            "$NETWORK"
+            -p "$scan_ports"
+            --rate "${MASSCAN_RETRY_RATE}"
+            --wait 5
+            -oL "$MASSCAN_LOG"
+        )
+
+        if [[ "${IS_ROOT:-false}" == true ]]; then
+            masscan "${retry_args[@]}"
+        else
+            $SUDO masscan "${retry_args[@]}"
+        fi
+    fi
 
     awk '$1 == "open" && $2 == "tcp" {print $4}' "$MASSCAN_LOG" \
         | sort -V -u > "$HOSTS_FILE"

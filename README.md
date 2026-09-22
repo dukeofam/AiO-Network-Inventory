@@ -576,6 +576,10 @@ packets per second. Reduce the rate for congested or sensitive networks:
 MASSCAN_RATE=1000 ./discover.sh --quick --no-install
 ```
 
+If a sweep reports no open ports, the tool retries once at `5000` packets per
+second by default. Configure this with `MASSCAN_RETRY_RATE` or disable retries
+with `MASSCAN_RETRIES=0`.
+
 ---
 
 # Project Structure

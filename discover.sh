@@ -38,6 +38,8 @@ VERSION="2.0.0"
 NMAP_HOST_TIMEOUT="${NMAP_HOST_TIMEOUT:-10m}"
 NMAP_MAX_RETRIES="${NMAP_MAX_RETRIES:-2}"
 MASSCAN_RATE="${MASSCAN_RATE:-20000}"
+MASSCAN_RETRY_RATE="${MASSCAN_RETRY_RATE:-5000}"
+MASSCAN_RETRIES="${MASSCAN_RETRIES:-1}"
 MASSCAN_PORTS="${MASSCAN_PORTS:-}"
 
 DISCOVERY_DIR="${DISCOVERY_DIR:-${SCRIPT_DIR}/network-discovery}"
@@ -76,6 +78,9 @@ Options:
 
     MASSCAN_RATE=20000
         Masscan packets per second.
+
+    MASSCAN_RETRY_RATE=5000
+        Retry rate when the first sweep finds no open ports.
 
     --no-install
         Never attempt to install missing dependencies.

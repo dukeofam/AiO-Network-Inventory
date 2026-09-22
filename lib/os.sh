@@ -3,17 +3,11 @@
 detect_os() {
 
     OS=""
-    OS_NAME=""
-    OS_VERSION=""
-
     case "$(uname -s)" in
 
         Darwin)
 
             OS="macos"
-
-            OS_NAME="macOS"
-            OS_VERSION="$(sw_vers -productVersion 2>/dev/null || true)"
 
             ;;
 
@@ -23,9 +17,6 @@ detect_os() {
 
                 # shellcheck disable=SC1091
                 source /etc/os-release
-
-                OS_NAME="${PRETTY_NAME:-Linux}"
-                OS_VERSION="${VERSION_ID:-}"
 
                 case "${ID:-}" in
 
@@ -54,8 +45,6 @@ detect_os() {
             else
 
                 OS="linux"
-                OS_NAME="Linux"
-
             fi
 
             ;;

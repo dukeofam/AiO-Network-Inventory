@@ -136,13 +136,3 @@ detect_network() {
     log "Local IP  : ${LOCAL_IP}"
     log "Network   : ${NETWORK}"
 }
-
-
-get_default_interface() {
-
-    if [[ -n "${INTERFACE:-}" ]]; then
-        echo "$INTERFACE"
-    else
-        echo ""
-    fi
-}

@@ -1,4 +1,4 @@
-# Network Discovery & Infrastructure Inventory
+# Network Asset Visibility & Inventory
 
 Fast TCP network inventory for authorized networks. The tool uses Masscan for port discovery, optionally enriches results with Nmap, collects TLS certificate data, and produces JSON, CSV, HTML, and change reports.
 

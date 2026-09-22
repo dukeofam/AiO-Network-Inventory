@@ -30,10 +30,28 @@ init_run_directory() {
     mkdir -p "$DISCOVERY_DIR"
 
     LOCK_DIR="${DISCOVERY_DIR}/.lock"
+    LOCK_FILE="${LOCK_DIR}/pid"
 
     if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-        die "Another discovery run is already using ${DISCOVERY_DIR}."
+        if [[ -r "$LOCK_FILE" ]]; then
+            local lock_pid
+            lock_pid="$(cat "$LOCK_FILE")"
+
+            if [[ "$lock_pid" =~ ^[0-9]+$ ]] && kill -0 "$lock_pid" 2>/dev/null; then
+                die "Another discovery run is already using ${DISCOVERY_DIR}."
+            fi
+
+            warn "Removing stale discovery lock from PID ${lock_pid:-unknown}."
+            rm -rf "$LOCK_DIR"
+
+            mkdir "$LOCK_DIR" 2>/dev/null \
+                || die "Unable to acquire discovery lock for ${DISCOVERY_DIR}."
+        else
+            die "Another discovery run is already using ${DISCOVERY_DIR}."
+        fi
     fi
+
+    printf '%s\n' "$$" > "$LOCK_FILE"
 
     trap 'rm -rf "$LOCK_DIR"' EXIT
     trap 'exit 130' INT TERM

@@ -21,6 +21,8 @@ output_file = sys.argv[2]
 with open(json_file, encoding="utf-8") as f:
     inventory = json.load(f)
 
+certificate_lines = []
+
 
 def get_certificate(host, port, server_name):
 
@@ -172,7 +174,7 @@ for host in inventory.get("hosts", []):
             else:
                 status = "OK"
 
-        print(
+        certificate_lines.append(
             f"{ip}:{port} "
             f"hostname={hostname} "
             f"status={status} "
@@ -180,6 +182,10 @@ for host in inventory.get("hosts", []):
             f"subject={cert.get('subject','')} "
             f"issuer={cert.get('issuer','')}"
         )
+
+with open(output_file, "w", encoding="utf-8") as f:
+    if certificate_lines:
+        f.write("\n".join(certificate_lines) + "\n")
 
 # Replace the inventory only after the complete certificate pass succeeds.
 temporary_json = f"{json_file}.tmp.{os.getpid()}"

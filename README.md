@@ -221,7 +221,7 @@ For faster discovery, use:
 sudo ./discover.sh --quick
 ```
 
-Quick mode uses Masscan to sweep TCP ports 1-10000 by default, then asks Nmap to
+Quick mode uses Masscan to sweep all TCP ports by default, then asks Nmap to
 enrich only the ports found open. It skips OS fingerprinting and uses faster
 host grouping for fleet scans. Use full mode when OS fingerprinting is
 required. Set `MASSCAN_PORTS` to override the range.

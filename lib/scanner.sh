@@ -4,10 +4,6 @@ discover_ports() {
 
     local scan_ports="${MASSCAN_PORTS:-1-65535}"
 
-    if [[ "$QUICK_SCAN" == true && -z "${MASSCAN_PORTS:-}" ]]; then
-        scan_ports="1-10000"
-    fi
-
     log "Discovering open TCP ports with Masscan..."
     log "Port range: ${scan_ports}; rate: ${MASSCAN_RATE} packets/sec."
 
@@ -58,6 +54,7 @@ scan_hosts() {
         -sV
         --version-light
         --open
+        -Pn
         -T3
         --host-timeout "${NMAP_HOST_TIMEOUT:-10m}"
         --max-retries "${NMAP_MAX_RETRIES:-2}"
@@ -91,6 +88,8 @@ scan_hosts() {
     if [[ "$QUICK_SCAN" == true ]]; then
 
         nmap "${nmap_args[@]}"
+
+        return
 
     elif [[ "$IS_ROOT" == true ]]; then
 

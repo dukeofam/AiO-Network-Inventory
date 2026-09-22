@@ -69,7 +69,7 @@ Options:
 
     --quick
         Faster scan.
-        Sweeps TCP ports 1-10000 with Masscan and skips OS detection.
+        Sweeps all TCP ports with Masscan and skips OS detection.
 
     MASSCAN_PORTS=1-65535
         Override the Masscan TCP port range.
